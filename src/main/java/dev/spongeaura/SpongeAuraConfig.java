@@ -21,6 +21,33 @@ public class SpongeAuraConfig {
     private static final Path CONFIG_PATH =
             FabricLoader.getInstance().getConfigDir().resolve("spongeaura.json");
 
+    public enum ActionMode {
+        PLACE_AND_COLLECT(
+                "Place & Collect",
+                "Places sponges/filler blocks and breaks wet sponges according to your Break Wet setting."
+        ),
+        COLLECT_ONLY(
+                "Collect Only",
+                "Places nothing — only breaks and collects both dry and wet sponge blocks in reach with your fastest tool."
+        );
+
+        private final String label;
+        private final String description;
+
+        ActionMode(String label, String description) {
+            this.label = label;
+            this.description = description;
+        }
+
+        public Component displayName() {
+            return Component.literal(label);
+        }
+
+        public Component tooltip() {
+            return Component.literal(description);
+        }
+    }
+
     public enum EfficiencyMode {
         MAX_EFFICIENCY(
                 "Max Efficiency",
@@ -113,6 +140,7 @@ public class SpongeAuraConfig {
         }
     }
 
+    public ActionMode actionMode = ActionMode.PLACE_AND_COLLECT;
     public EfficiencyMode efficiencyMode = EfficiencyMode.PRACTICAL;
     public PlacementMode placementMode = PlacementMode.DIRECT;
     public RotationMode rotationMode = RotationMode.NONE;
@@ -199,6 +227,9 @@ public class SpongeAuraConfig {
     }
 
     public void validate() {
+        if (actionMode == null) {
+            actionMode = ActionMode.PLACE_AND_COLLECT;
+        }
         if (efficiencyMode == null) {
             efficiencyMode = EfficiencyMode.PRACTICAL;
         }
@@ -216,6 +247,7 @@ public class SpongeAuraConfig {
     }
 
     public void resetDefaults() {
+        actionMode = ActionMode.PLACE_AND_COLLECT;
         efficiencyMode = EfficiencyMode.PRACTICAL;
         placementMode = PlacementMode.DIRECT;
         rotationMode = RotationMode.NONE;

@@ -1,5 +1,6 @@
 package dev.spongeaura;
 
+import dev.spongeaura.SpongeAuraConfig.ActionMode;
 import dev.spongeaura.SpongeAuraConfig.EfficiencyMode;
 import dev.spongeaura.SpongeAuraConfig.PlacementMode;
 import dev.spongeaura.SpongeAuraConfig.RotationMode;
@@ -37,13 +38,13 @@ public class SpongeAuraSettingsScreen extends Screen {
 
         int colW = 152;
         int gap = 10;
-        int rowH = (this.height < 280) ? 19 : 20;
-        int rowStep = (this.height < 280) ? 21 : 23;
+        int rowH = (this.height < 300) ? 18 : 20;
+        int rowStep = (this.height < 300) ? 20 : 22;
         int leftX = this.width / 2 - colW - gap / 2;
         int rightX = this.width / 2 + gap / 2;
-        int startY = Math.max(47, Math.min(62, (this.height - rowStep * 6 - 44) / 2 + 18));
+        int startY = Math.max(44, Math.min(58, (this.height - rowStep * 7 - 44) / 2 + 16));
 
-        // Row 0: Enabled & Efficiency Mode
+        // Row 0: Enabled & Action Mode (H keybind)
         this.addRenderableWidget(
                 CycleButton.onOffBuilder(SpongeAuraClient.isEnabled())
                         .withTooltip(v -> Tooltip.create(Component.literal("Turns SpongeAura on or off (Key: G).")))
@@ -52,23 +53,71 @@ public class SpongeAuraSettingsScreen extends Screen {
         );
 
         this.addRenderableWidget(
+                CycleButton.<ActionMode>builder(ActionMode::displayName, cfg.actionMode)
+                        .withValues(ActionMode.values())
+                        .withTooltip(mode -> Tooltip.create(mode.tooltip()))
+                        .create(rightX, startY, colW, rowH, Component.literal("Action"),
+                                (btn, value) -> {
+                                    cfg.actionMode = value;
+                                    cfg.save();
+                                })
+        );
+
+        // Row 1: Efficiency Mode & Break Wet
+        int y1 = startY + rowStep;
+        this.addRenderableWidget(
                 CycleButton.<EfficiencyMode>builder(EfficiencyMode::displayName, cfg.efficiencyMode)
                         .withValues(EfficiencyMode.values())
                         .withTooltip(mode -> Tooltip.create(mode.tooltip()))
-                        .create(rightX, startY, colW, rowH, Component.literal("Efficiency"),
+                        .create(leftX, y1, colW, rowH, Component.literal("Efficiency"),
                                 (btn, value) -> {
                                     cfg.efficiencyMode = value;
                                     cfg.save();
                                 })
         );
 
-        // Row 1: Nether Dry & Through-Wall Highlight
-        int y1 = startY + rowStep;
+        this.addRenderableWidget(
+                CycleButton.<WetSpongeBreakMode>builder(WetSpongeBreakMode::displayName, cfg.wetSpongeBreakMode)
+                        .withValues(WetSpongeBreakMode.values())
+                        .withTooltip(mode -> Tooltip.create(mode.tooltip()))
+                        .create(rightX, y1, colW, rowH, Component.literal("Break Wet"),
+                                (btn, value) -> {
+                                    cfg.wetSpongeBreakMode = value;
+                                    cfg.save();
+                                })
+        );
+
+        // Row 2: Placement Mode & Rotation Mode
+        int y2 = startY + rowStep * 2;
+        this.addRenderableWidget(
+                CycleButton.<PlacementMode>builder(PlacementMode::displayName, cfg.placementMode)
+                        .withValues(PlacementMode.values())
+                        .withTooltip(mode -> Tooltip.create(mode.tooltip()))
+                        .create(leftX, y2, colW, rowH, Component.literal("Placement"),
+                                (btn, value) -> {
+                                    cfg.placementMode = value;
+                                    cfg.save();
+                                })
+        );
+
+        this.addRenderableWidget(
+                CycleButton.<RotationMode>builder(RotationMode::displayName, cfg.rotationMode)
+                        .withValues(RotationMode.values())
+                        .withTooltip(mode -> Tooltip.create(mode.tooltip()))
+                        .create(rightX, y2, colW, rowH, Component.literal("Rotation"),
+                                (btn, value) -> {
+                                    cfg.rotationMode = value;
+                                    cfg.save();
+                                })
+        );
+
+        // Row 3: Nether Dry & Highlight
+        int y3 = startY + rowStep * 3;
         this.addRenderableWidget(
                 CycleButton.onOffBuilder(cfg.netherAutoDry)
                         .withTooltip(v -> Tooltip.create(Component.literal(
                                 "In the Nether (or any evaporating dimension), pressing G automatically places wet sponges and breaks the dried sponges with your best tool.")))
-                        .create(leftX, y1, colW, rowH, Component.literal("Nether Dry"),
+                        .create(leftX, y3, colW, rowH, Component.literal("Nether Dry"),
                                 (btn, value) -> {
                                     cfg.netherAutoDry = value;
                                     cfg.save();
@@ -79,7 +128,7 @@ public class SpongeAuraSettingsScreen extends Screen {
                 CycleButton.onOffBuilder(cfg.highlightSponges)
                         .withTooltip(v -> Tooltip.create(Component.literal(
                                 "Highlights dry (pink) and wet (purple) sponge blocks and dropped items through walls.")))
-                        .create(rightX, y1, colW, rowH, Component.literal("Highlight"),
+                        .create(rightX, y3, colW, rowH, Component.literal("Highlight"),
                                 (btn, value) -> {
                                     cfg.highlightSponges = value;
                                     cfg.save();
@@ -88,54 +137,6 @@ public class SpongeAuraSettingsScreen extends Screen {
                                     } else {
                                         SpongeHighlighter.clear();
                                     }
-                                })
-        );
-
-        // Row 2: Break Wet & Placement Mode
-        int y2 = startY + rowStep * 2;
-        this.addRenderableWidget(
-                CycleButton.<WetSpongeBreakMode>builder(WetSpongeBreakMode::displayName, cfg.wetSpongeBreakMode)
-                        .withValues(WetSpongeBreakMode.values())
-                        .withTooltip(mode -> Tooltip.create(mode.tooltip()))
-                        .create(leftX, y2, colW, rowH, Component.literal("Break Wet"),
-                                (btn, value) -> {
-                                    cfg.wetSpongeBreakMode = value;
-                                    cfg.save();
-                                })
-        );
-
-        this.addRenderableWidget(
-                CycleButton.<PlacementMode>builder(PlacementMode::displayName, cfg.placementMode)
-                        .withValues(PlacementMode.values())
-                        .withTooltip(mode -> Tooltip.create(mode.tooltip()))
-                        .create(rightX, y2, colW, rowH, Component.literal("Placement"),
-                                (btn, value) -> {
-                                    cfg.placementMode = value;
-                                    cfg.save();
-                                })
-        );
-
-        // Row 3: Rotation Mode & Auto-Refill
-        int y3 = startY + rowStep * 3;
-        this.addRenderableWidget(
-                CycleButton.<RotationMode>builder(RotationMode::displayName, cfg.rotationMode)
-                        .withValues(RotationMode.values())
-                        .withTooltip(mode -> Tooltip.create(mode.tooltip()))
-                        .create(leftX, y3, colW, rowH, Component.literal("Rotation"),
-                                (btn, value) -> {
-                                    cfg.rotationMode = value;
-                                    cfg.save();
-                                })
-        );
-
-        this.addRenderableWidget(
-                CycleButton.onOffBuilder(cfg.autoRefill)
-                        .withTooltip(v -> Tooltip.create(Component.literal(
-                                "Automatically swaps sponges or filler blocks from your main inventory into the hotbar while protecting tools.")))
-                        .create(rightX, y3, colW, rowH, Component.literal("Auto-Refill"),
-                                (btn, value) -> {
-                                    cfg.autoRefill = value;
-                                    cfg.save();
                                 })
         );
 
@@ -151,7 +152,7 @@ public class SpongeAuraSettingsScreen extends Screen {
                 "Cooldown ticks between placements (0 = fastest for bursting water repair and Nether drying).")));
         this.addRenderableWidget(delaySlider);
 
-        // Row 5: Fill Tiny (1-5) & Particles
+        // Row 5: Fill Tiny (1-5) & Auto-Refill
         int y5 = startY + rowStep * 5;
         this.addRenderableWidget(
                 CycleButton.onOffBuilder(cfg.fillTinyWithBlocks)
@@ -165,29 +166,18 @@ public class SpongeAuraSettingsScreen extends Screen {
         );
 
         this.addRenderableWidget(
-                CycleButton.onOffBuilder(cfg.particles)
+                CycleButton.onOffBuilder(cfg.autoRefill)
                         .withTooltip(v -> Tooltip.create(Component.literal(
-                                "Spawns subtle client-side particles when placing, breaking, filling, or drying sponges.")))
-                        .create(rightX, y5, colW, rowH, Component.literal("Particles"),
+                                "Automatically swaps sponges or filler blocks from your main inventory into the hotbar while protecting tools.")))
+                        .create(rightX, y5, colW, rowH, Component.literal("Auto-Refill"),
                                 (btn, value) -> {
-                                    cfg.particles = value;
+                                    cfg.autoRefill = value;
                                     cfg.save();
                                 })
         );
 
-        // Footer: Reset Defaults, Work Area & Done
-        int footerY = Math.max(startY + rowStep * 6 + 6, this.height - 26);
-        this.addRenderableWidget(
-                Button.builder(Component.literal("Reset Defaults"), btn -> {
-                            cfg.resetDefaults();
-                            SpongeHighlighter.requestRescan();
-                            this.minecraft.gui.setScreen(new SpongeAuraSettingsScreen(this.parent));
-                        })
-                        .bounds(leftX, footerY, 98, rowH)
-                        .tooltip(Tooltip.create(Component.literal("Restore all settings to recommended defaults.")))
-                        .build()
-        );
-
+        // Row 6: Work Area & Particles
+        int y6 = startY + rowStep * 6;
         String areaLabel = cfg.areaLimitEnabled ? "Work Area: Bounded" : "Work Area: Always";
         String areaTip = cfg.areaLimitEnabled
                 ? "Bounded to X [" + cfg.areaMinX() + ".." + cfg.areaMaxX() + "], Z ["
@@ -196,14 +186,38 @@ public class SpongeAuraSettingsScreen extends Screen {
         this.addRenderableWidget(
                 Button.builder(Component.literal(areaLabel), btn ->
                                 this.minecraft.gui.setScreen(new SpongeAuraAreaScreen(this)))
-                        .bounds(leftX + 104, footerY, 106, rowH)
+                        .bounds(leftX, y6, colW, rowH)
                         .tooltip(Tooltip.create(Component.literal(areaTip)))
                         .build()
         );
 
         this.addRenderableWidget(
+                CycleButton.onOffBuilder(cfg.particles)
+                        .withTooltip(v -> Tooltip.create(Component.literal(
+                                "Spawns subtle client-side particles when placing, breaking, filling, or drying sponges.")))
+                        .create(rightX, y6, colW, rowH, Component.literal("Particles"),
+                                (btn, value) -> {
+                                    cfg.particles = value;
+                                    cfg.save();
+                                })
+        );
+
+        // Footer: Reset Defaults & Done
+        int footerY = Math.max(startY + rowStep * 7 + 5, this.height - 24);
+        this.addRenderableWidget(
+                Button.builder(Component.literal("Reset Defaults"), btn -> {
+                            cfg.resetDefaults();
+                            SpongeHighlighter.requestRescan();
+                            this.minecraft.gui.setScreen(new SpongeAuraSettingsScreen(this.parent));
+                        })
+                        .bounds(leftX, footerY, colW, rowH)
+                        .tooltip(Tooltip.create(Component.literal("Restore all settings to recommended defaults.")))
+                        .build()
+        );
+
+        this.addRenderableWidget(
                 Button.builder(Component.literal("Done"), btn -> this.onClose())
-                        .bounds(leftX + 216, footerY, 98, rowH)
+                        .bounds(rightX, footerY, colW, rowH)
                         .build()
         );
     }
@@ -212,12 +226,12 @@ public class SpongeAuraSettingsScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
-        guiGraphics.centeredText(this.font, "§b§lSpongeAura Settings §8v2.3.0", this.width / 2, 6, 0xFFFFFFFF);
+        guiGraphics.centeredText(this.font, "§b§lSpongeAura Settings §8v2.3.1", this.width / 2, 6, 0xFFFFFFFF);
 
         renderBrandBanner(guiGraphics, mouseX, mouseY);
 
         String stateText = SpongeAuraClient.isEnabled() ? "§aActive" : "§cInactive";
-        String subtitle = "Status: " + stateText + "  §8|  §7G Toggle · H Mode · J Settings";
+        String subtitle = "Status: " + stateText + "  §8|  §7G Toggle · H Collect/Place · J Settings";
         guiGraphics.centeredText(this.font, subtitle, this.width / 2, 34, 0xFFAAAAAA);
     }
 
@@ -254,7 +268,7 @@ public class SpongeAuraSettingsScreen extends Screen {
         if (hovered) {
             guiGraphics.setTooltipForNextFrame(
                     this.font,
-                    Component.literal("Engineered by David Matheja — David Industries™ (v2.3.0)"),
+                    Component.literal("Engineered by David Matheja — David Industries™ (v2.3.1)"),
                     mouseX,
                     mouseY
             );

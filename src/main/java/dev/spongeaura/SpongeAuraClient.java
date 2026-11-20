@@ -1,6 +1,7 @@
 package dev.spongeaura;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import dev.spongeaura.SpongeAuraConfig.ActionMode;
 import dev.spongeaura.SpongeAuraConfig.EfficiencyMode;
 import dev.spongeaura.SpongeAuraConfig.PlacementMode;
 import dev.spongeaura.SpongeAuraConfig.RotationMode;
@@ -52,7 +53,7 @@ import java.util.Queue;
 import java.util.Set;
 
 /**
- * SpongeAura v2.3.0 for Minecraft 26.3 (Fabric, Mojang Names, Java 25).
+ * SpongeAura v2.3.1 for Minecraft 26.3 (Fabric, Mojang Names, Java 25).
  */
 public class SpongeAuraClient implements ClientModInitializer {
 
@@ -216,6 +217,7 @@ public class SpongeAuraClient implements ClientModInitializer {
         if (!level.isClientSide()
                 || !enabled
                 || internalPlacement
+                || config.actionMode == ActionMode.COLLECT_ONLY
                 || !player.getItemInHand(hand).is(Items.SPONGE)
                 || player.isShiftKeyDown()) {
             return InteractionResult.PASS;
@@ -289,9 +291,9 @@ public class SpongeAuraClient implements ClientModInitializer {
         }
 
         while (modeKey.consumeClick()) {
-            config.efficiencyMode = (config.efficiencyMode == EfficiencyMode.MAX_EFFICIENCY)
-                    ? EfficiencyMode.PRACTICAL
-                    : EfficiencyMode.MAX_EFFICIENCY;
+            config.actionMode = (config.actionMode == ActionMode.PLACE_AND_COLLECT)
+                    ? ActionMode.COLLECT_ONLY
+                    : ActionMode.PLACE_AND_COLLECT;
             config.save();
             sendModeStatus(player);
         }
@@ -331,21 +333,29 @@ public class SpongeAuraClient implements ClientModInitializer {
         }
         notifiedOutsideArea = false;
 
-        // Continue breaking an already-targeted wet sponge before doing anything else
+        boolean collectOnly = (config.actionMode == ActionMode.COLLECT_ONLY);
+
+        // Continue breaking an already-targeted sponge before doing anything else
         if (breakingPos != null) {
-            if (!level.getBlockState(breakingPos).is(Blocks.WET_SPONGE)) {
+            BlockState breakingState = level.getBlockState(breakingPos);
+            boolean stillTarget = collectOnly
+                    ? isSpongeBlock(breakingState)
+                    : breakingState.is(Blocks.WET_SPONGE);
+            boolean shouldCancel = !isWithinReach(player, breakingPos)
+                    || !config.isInsideWorkArea(breakingPos)
+                    || (!collectOnly && (config.wetSpongeBreakMode == WetSpongeBreakMode.OFF
+                            || (config.wetSpongeBreakMode == WetSpongeBreakMode.SAFE && isWetSpongeExposed(level, breakingPos))));
+
+            if (!stillTarget) {
                 sessionBroken++;
                 spawnBreakParticles(level, breakingPos);
                 SpongeHighlighter.requestRescan();
                 breakingPos = null;
-            } else if (config.wetSpongeBreakMode == WetSpongeBreakMode.OFF
-                    || !isWithinReach(player, breakingPos)
-                    || !config.isInsideWorkArea(breakingPos)
-                    || (config.wetSpongeBreakMode == WetSpongeBreakMode.SAFE && isWetSpongeExposed(level, breakingPos))) {
+            } else if (shouldCancel) {
                 client.gameMode.stopDestroyBlock();
                 breakingPos = null;
             } else {
-                selectBestHotbarTool(player, level.getBlockState(breakingPos));
+                selectBestHotbarTool(player, breakingState);
                 Direction face = getClosestFace(player.getEyePosition(), breakingPos);
                 if (config.rotationMode != RotationMode.NONE) {
                     applyRotation(player, Vec3.atCenterOf(breakingPos));
@@ -356,15 +366,36 @@ public class SpongeAuraClient implements ClientModInitializer {
             }
         }
 
-        // Placement / tiny-pocket fill phase
-        if (cooldown <= 0) {
+        // Placement / tiny-pocket fill phase (skipped in Collect Only)
+        if (!collectOnly && cooldown <= 0) {
             if (tryPlaceBestNow(client, player, level, InteractionHand.MAIN_HAND, false)) {
                 return;
             }
         }
 
-        // Smart wet-sponge auto-break phase (runs when no placement occurred this tick)
-        if (config.wetSpongeBreakMode != WetSpongeBreakMode.OFF) {
+        // Break / collect phase
+        if (collectOnly) {
+            BlockPos spongeTarget = findNearestAnySponge(player, level);
+            if (spongeTarget != null) {
+                BlockState targetState = level.getBlockState(spongeTarget);
+                selectBestHotbarTool(player, targetState);
+                Direction face = getClosestFace(player.getEyePosition(), spongeTarget);
+                if (config.rotationMode != RotationMode.NONE) {
+                    applyRotation(player, Vec3.atCenterOf(spongeTarget));
+                }
+                if (client.gameMode.startDestroyBlock(spongeTarget, face)) {
+                    player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
+                    if (!isSpongeBlock(level.getBlockState(spongeTarget))) {
+                        sessionBroken++;
+                        spawnBreakParticles(level, spongeTarget);
+                        SpongeHighlighter.requestRescan();
+                        breakingPos = null;
+                    } else {
+                        breakingPos = spongeTarget;
+                    }
+                }
+            }
+        } else if (config.wetSpongeBreakMode != WetSpongeBreakMode.OFF) {
             BlockPos wetTarget = findNearestWetSponge(player, level);
             if (wetTarget != null) {
                 selectBestHotbarTool(player, level.getBlockState(wetTarget));
@@ -373,8 +404,15 @@ public class SpongeAuraClient implements ClientModInitializer {
                     applyRotation(player, Vec3.atCenterOf(wetTarget));
                 }
                 if (client.gameMode.startDestroyBlock(wetTarget, face)) {
-                    breakingPos = wetTarget;
                     player.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
+                    if (!level.getBlockState(wetTarget).is(Blocks.WET_SPONGE)) {
+                        sessionBroken++;
+                        spawnBreakParticles(level, wetTarget);
+                        SpongeHighlighter.requestRescan();
+                        breakingPos = null;
+                    } else {
+                        breakingPos = wetTarget;
+                    }
                 }
             }
         }
@@ -611,10 +649,15 @@ public class SpongeAuraClient implements ClientModInitializer {
 
     private void sendModeStatus(LocalPlayer player) {
         String state = enabled ? "§aON" : "§cOFF";
-        String placeLabel = (config.placementMode == PlacementMode.LEGIT) ? "Legit" : "Direct";
-        player.sendOverlayMessage(Component.literal(
-                "§b[SpongeAura] " + state + " §7| Mode: " + formatModeLabel() + " §7| " + placeLabel
-        ));
+        if (config.actionMode == ActionMode.COLLECT_ONLY) {
+            player.sendOverlayMessage(Component.literal(
+                    "§b[SpongeAura] " + state + " §7| §eCollect Only §7(Dry & Wet Sponges)"
+            ));
+        } else {
+            player.sendOverlayMessage(Component.literal(
+                    "§b[SpongeAura] " + state + " §7| §aPlace & Collect §7| " + formatModeLabel()
+            ));
+        }
     }
 
     private void sendStatus(LocalPlayer player, ClientLevel level, boolean showSummaryIfAny) {
@@ -636,8 +679,12 @@ public class SpongeAuraClient implements ClientModInitializer {
                                 + " §7| Drained: §f~" + sessionDrained
                                 + " §7| Broken: §f" + sessionBroken
                 ));
+            } else if (config.actionMode == ActionMode.COLLECT_ONLY) {
+                player.sendOverlayMessage(Component.literal("§b[SpongeAura] §cOFF §7| §eCollect Only"));
             } else {
-                player.sendOverlayMessage(Component.literal("§b[SpongeAura] §cOFF §7| " + formatModeLabel()));
+                player.sendOverlayMessage(Component.literal(
+                        "§b[SpongeAura] §cOFF §7| §aPlace & Collect §7| " + formatModeLabel()
+                ));
             }
             return;
         }
@@ -649,8 +696,6 @@ public class SpongeAuraClient implements ClientModInitializer {
             return;
         }
 
-        String modeLabel = formatModeLabel();
-        String placeLabel = (config.placementMode == PlacementMode.LEGIT) ? "Legit" : "Direct";
         String areaTag = "";
         if (config.areaLimitEnabled) {
             int areaMargin = (int) Math.ceil(config.reach) + 1;
@@ -658,6 +703,16 @@ public class SpongeAuraClient implements ClientModInitializer {
                     ? " §7| §eArea"
                     : " §7| §cOutside Area";
         }
+
+        if (config.actionMode == ActionMode.COLLECT_ONLY) {
+            player.sendOverlayMessage(Component.literal(
+                    "§b[SpongeAura] §aON §7| §eCollect Only §7(Dry & Wet)" + areaTag
+            ));
+            return;
+        }
+
+        String modeLabel = formatModeLabel();
+        String placeLabel = (config.placementMode == PlacementMode.LEGIT) ? "Legit" : "Direct";
         int totalSponges = countItem(player, Items.SPONGE);
         if (config.fillTinyWithBlocks) {
             int totalFillers = countFillerBlocks(player);
@@ -1622,6 +1677,41 @@ public class SpongeAuraClient implements ClientModInitializer {
             }
         }
         return nearest;
+    }
+
+    private BlockPos findNearestAnySponge(LocalPlayer player, ClientLevel level) {
+        Vec3 eyePos = player.getEyePosition();
+        BlockPos center = BlockPos.containing(eyePos);
+        double maxDistSqr = config.reach * config.reach;
+        int radius = (int) Math.ceil(config.reach);
+
+        BlockPos nearest = null;
+        double nearestDistSqr = Double.MAX_VALUE;
+
+        for (int dy = radius; dy >= -radius; dy--) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    BlockPos pos = center.offset(dx, dy, dz);
+                    double distSqr = eyePos.distanceToSqr(Vec3.atCenterOf(pos));
+                    if (distSqr > maxDistSqr || distSqr >= nearestDistSqr) {
+                        continue;
+                    }
+                    if (!config.isInsideWorkArea(pos)) {
+                        continue;
+                    }
+                    if (!isSpongeBlock(level.getBlockState(pos))) {
+                        continue;
+                    }
+                    nearest = pos;
+                    nearestDistSqr = distSqr;
+                }
+            }
+        }
+        return nearest;
+    }
+
+    private boolean isSpongeBlock(BlockState state) {
+        return state.is(Blocks.SPONGE) || state.is(Blocks.WET_SPONGE);
     }
 
     private boolean isWetSpongeExposed(ClientLevel level, BlockPos pos) {
