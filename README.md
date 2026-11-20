@@ -11,7 +11,7 @@ SpongeAura automates draining rivers, water caves, aquifers, and stray pockets w
 
 1. Install **Fabric Loader** (`>=0.19.3`) and **Fabric API** for **Minecraft 26.3** (e.g., via Modrinth App).
 2. *(Optional)* Install **Mod Menu** to open settings from the Mods list.
-3. Download **`spongeaura-2.2.2.jar`** (do **not** use `-sources.jar`) and drop it into your instance's `mods/` folder.
+3. Download [**`spongeaura-2.2.2.jar`**](https://github.com/DMatheja/SpongeAura/raw/main/spongeaura-2.2.2.jar) directly from the repository root (do **not** use `-sources.jar`) and drop it into your instance's `mods/` folder.
 4. Launch Minecraft.
 
 ---
