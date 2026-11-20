@@ -285,7 +285,7 @@ public class SpongeAuraClient implements ClientModInitializer {
                     ? EfficiencyMode.PRACTICAL
                     : EfficiencyMode.MAX_EFFICIENCY;
             config.save();
-            sendStatus(player, level, false);
+            sendModeStatus(player);
         }
 
         if (!enabled || client.gui.screen() != null) {
@@ -580,6 +580,20 @@ public class SpongeAuraClient implements ClientModInitializer {
         triggeredStackJoke = false;
     }
 
+    private String formatModeLabel() {
+        return (config.efficiencyMode == EfficiencyMode.MAX_EFFICIENCY)
+                ? "§dMax Efficiency (48+)"
+                : "§fPractical (22+)";
+    }
+
+    private void sendModeStatus(LocalPlayer player) {
+        String state = enabled ? "§aON" : "§cOFF";
+        String placeLabel = (config.placementMode == PlacementMode.LEGIT) ? "Legit" : "Direct";
+        player.sendOverlayMessage(Component.literal(
+                "§b[SpongeAura] " + state + " §7| Mode: " + formatModeLabel() + " §7| " + placeLabel
+        ));
+    }
+
     private void sendStatus(LocalPlayer player, ClientLevel level, boolean showSummaryIfAny) {
         boolean netherMode = config.netherAutoDry && isEvaporatingDimension(level, player.blockPosition());
 
@@ -600,7 +614,7 @@ public class SpongeAuraClient implements ClientModInitializer {
                                 + " §7| Broken: §f" + sessionBroken
                 ));
             } else {
-                player.sendOverlayMessage(Component.literal("§b[SpongeAura] §cOFF"));
+                player.sendOverlayMessage(Component.literal("§b[SpongeAura] §cOFF §7| " + formatModeLabel()));
             }
             return;
         }
@@ -612,9 +626,7 @@ public class SpongeAuraClient implements ClientModInitializer {
             return;
         }
 
-        String modeLabel = (config.efficiencyMode == EfficiencyMode.MAX_EFFICIENCY)
-                ? "§dMax Efficiency (48+)"
-                : "§fPractical (22+)";
+        String modeLabel = formatModeLabel();
         String placeLabel = (config.placementMode == PlacementMode.LEGIT) ? "Legit" : "Direct";
         int totalSponges = countItem(player, Items.SPONGE);
         if (config.fillTinyWithBlocks) {
