@@ -175,7 +175,7 @@ public class SpongeAuraSettingsScreen extends Screen {
                                 })
         );
 
-        // Footer: Reset Defaults & Done
+        // Footer: Reset Defaults, Work Area & Done
         int footerY = Math.max(startY + rowStep * 6 + 6, this.height - 26);
         this.addRenderableWidget(
                 Button.builder(Component.literal("Reset Defaults"), btn -> {
@@ -183,14 +183,27 @@ public class SpongeAuraSettingsScreen extends Screen {
                             SpongeHighlighter.requestRescan();
                             this.minecraft.gui.setScreen(new SpongeAuraSettingsScreen(this.parent));
                         })
-                        .bounds(leftX, footerY, colW, rowH)
+                        .bounds(leftX, footerY, 98, rowH)
                         .tooltip(Tooltip.create(Component.literal("Restore all settings to recommended defaults.")))
+                        .build()
+        );
+
+        String areaLabel = cfg.areaLimitEnabled ? "Work Area: Bounded" : "Work Area: Always";
+        String areaTip = cfg.areaLimitEnabled
+                ? "Bounded to X [" + cfg.areaMinX() + ".." + cfg.areaMaxX() + "], Z ["
+                        + cfg.areaMinZ() + ".." + cfg.areaMaxZ() + "] (all Y levels). Click to edit."
+                : "Currently Always On (works everywhere). Click to configure horizontal X/Z bounds.";
+        this.addRenderableWidget(
+                Button.builder(Component.literal(areaLabel), btn ->
+                                this.minecraft.gui.setScreen(new SpongeAuraAreaScreen(this)))
+                        .bounds(leftX + 104, footerY, 106, rowH)
+                        .tooltip(Tooltip.create(Component.literal(areaTip)))
                         .build()
         );
 
         this.addRenderableWidget(
                 Button.builder(Component.literal("Done"), btn -> this.onClose())
-                        .bounds(rightX, footerY, colW, rowH)
+                        .bounds(leftX + 216, footerY, 98, rowH)
                         .build()
         );
     }
@@ -199,7 +212,7 @@ public class SpongeAuraSettingsScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
 
-        guiGraphics.centeredText(this.font, "§b§lSpongeAura Settings §8v2.2.2", this.width / 2, 6, 0xFFFFFFFF);
+        guiGraphics.centeredText(this.font, "§b§lSpongeAura Settings §8v2.3.0", this.width / 2, 6, 0xFFFFFFFF);
 
         renderBrandBanner(guiGraphics, mouseX, mouseY);
 
@@ -241,7 +254,7 @@ public class SpongeAuraSettingsScreen extends Screen {
         if (hovered) {
             guiGraphics.setTooltipForNextFrame(
                     this.font,
-                    Component.literal("Engineered by David Matheja — David Industries™ (v2.2.2)"),
+                    Component.literal("Engineered by David Matheja — David Industries™ (v2.3.0)"),
                     mouseX,
                     mouseY
             );

@@ -3,7 +3,7 @@
 > **Smart perimeter-prep sponge automation for Minecraft 26.3 (Fabric · Java 25)**  
 > *by David Matheja — David Industries™*
 
-SpongeAura automates draining rivers, water caves, aquifers, and stray pockets without wasting sponges on self-refilling ocean holes, and auto-dries wet sponges in the Nether.
+SpongeAura automates draining rivers, water caves, aquifers, and stray pockets without wasting sponges on self-refilling ocean holes, lets you lock draining to a horizontal X/Z work area so your base stays safe, and auto-dries wet sponges in the Nether.
 
 ---
 
@@ -11,7 +11,7 @@ SpongeAura automates draining rivers, water caves, aquifers, and stray pockets w
 
 1. Install **Fabric Loader** (`>=0.19.3`) and **Fabric API** for **Minecraft 26.3** (e.g., via Modrinth App).
 2. *(Optional)* Install **Mod Menu** to open settings from the Mods list.
-3. Download [**`spongeaura-2.2.2.jar`**](https://github.com/DMatheja/SpongeAura/raw/main/spongeaura-2.2.2.jar) directly from the repository root (do **not** use `-sources.jar`) and drop it into your instance's `mods/` folder.
+3. Download [**`spongeaura-2.3.0.jar`**](https://github.com/DMatheja/SpongeAura/raw/main/spongeaura-2.3.0.jar) directly from the repository root (do **not** use `-sources.jar`) and drop it into your instance's `mods/` folder.
 4. Launch Minecraft.
 
 ---
@@ -23,7 +23,7 @@ All keybinds can be changed under **Options → Controls → Key Binds → Spong
 | Key | Action |
 | :---: | :--- |
 | **`G`** | Toggle SpongeAura **ON / OFF** *(Drains water in Overworld/End · Auto-Dries in Nether)* |
-| **`H`** | Switch Efficiency Mode (**Max Efficiency** ↔ **Practical**) |
+| **`H`** | Switch Efficiency Mode (**Max Efficiency** ↔ **Practical**) — works even while OFF |
 | **`J`** | Open **SpongeAura Settings** GUI |
 | **`Shift + Right-Click`** | Bypass manual placement takeover and force a raw sponge placement |
 
@@ -31,6 +31,10 @@ All keybinds can be changed under **Options → Controls → Key Binds → Spong
 
 ## Features
 
+- **Horizontal Work Area Bounds (Base Protection)**
+  - Configure a **Bounded (X/Z)** box in Settings (**Work Area**) with **no vertical (Y) limit**, or leave it on **Always On**.
+  - Set Corner 1 / Corner 2 manually or with 1-click **Here** / **`±128`** / **`±64`** presets.
+  - Automatically pauses when you leave your work area (so flying back to base never drains your water builds), highlights the X/Z border in cyan, and automatically exempts Nether Auto-Dry.
 - **Source-Only Targeting & Anti-Refill Physics**
   - Strictly targets water **source** blocks (never wastes sponges on flowing water).
   - Simulates Vanilla's 65-block / depth-6 BFS plus Minecraft's 5-tick infinite-water repair rule, plus a sub-5-tick burst check to cut off regenerating edges.
@@ -64,4 +68,4 @@ Requires **Java 25 JDK**. No pre-installed Gradle is needed — use the included
 ./gradlew clean jar
 ```
 
-The compiled mod will be in `build/libs/spongeaura-2.2.2.jar`.
+The compiled mod will be in `build/libs/spongeaura-2.3.0.jar`.

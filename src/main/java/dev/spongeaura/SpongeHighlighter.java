@@ -26,12 +26,13 @@ import java.util.List;
 
 /**
  * Renders through-wall pink (dry) and purple (wet) outlines for placed sponge blocks
- * and dropped sponge items using Minecraft 26.3's native always-on-top Gizmos.
+ * and dropped sponge items, plus cyan horizontal X/Z work area bounds when enabled.
  */
 public final class SpongeHighlighter {
 
     private static final GizmoStyle DRY_STYLE = GizmoStyle.strokeAndFill(0xFFFF55CC, 2.5f, 0x45FF55CC);
     private static final GizmoStyle WET_STYLE = GizmoStyle.strokeAndFill(0xFFAA44FF, 2.5f, 0x45AA44FF);
+    private static final int AREA_BORDER_COLOR = 0xBB55FFFF;
 
     private static final int SCAN_CHUNK_RADIUS = 4;
     private static final int SCAN_INTERVAL_TICKS = 10;
@@ -126,7 +127,8 @@ public final class SpongeHighlighter {
     }
 
     private static void onBeforeGizmos(LevelRenderContext context) {
-        if (!SpongeAuraClient.getConfig().highlightSponges) {
+        SpongeAuraConfig cfg = SpongeAuraClient.getConfig();
+        if (!cfg.highlightSponges) {
             return;
         }
         Minecraft client = Minecraft.getInstance();
@@ -168,6 +170,38 @@ public final class SpongeHighlighter {
                 AABB box = itemEntity.getBoundingBox().move(delta).inflate(0.08);
                 Gizmos.cuboid(box, wet ? WET_STYLE : DRY_STYLE).setAlwaysOnTop();
             }
+
+            if (cfg.areaLimitEnabled
+                    && !SpongeAuraClient.isEvaporatingDimension(level, client.player.blockPosition())
+                    && cfg.isNearWorkArea(client.player.blockPosition(), 128)) {
+                renderWorkAreaBorder(cfg, client.player.getBlockY());
+            }
         }
+    }
+
+    private static void renderWorkAreaBorder(SpongeAuraConfig cfg, int playerY) {
+        double minX = cfg.areaMinX();
+        double maxX = cfg.areaMaxX() + 1.0;
+        double minZ = cfg.areaMinZ();
+        double maxZ = cfg.areaMaxZ() + 1.0;
+
+        double y = playerY + 0.05;
+        double beamBottom = playerY - 16.0;
+        double beamTop = playerY + 32.0;
+
+        Vec3 nw = new Vec3(minX, y, minZ);
+        Vec3 ne = new Vec3(maxX, y, minZ);
+        Vec3 se = new Vec3(maxX, y, maxZ);
+        Vec3 sw = new Vec3(minX, y, maxZ);
+
+        Gizmos.line(nw, ne, AREA_BORDER_COLOR, 2.0f).setAlwaysOnTop();
+        Gizmos.line(ne, se, AREA_BORDER_COLOR, 2.0f).setAlwaysOnTop();
+        Gizmos.line(se, sw, AREA_BORDER_COLOR, 2.0f).setAlwaysOnTop();
+        Gizmos.line(sw, nw, AREA_BORDER_COLOR, 2.0f).setAlwaysOnTop();
+
+        Gizmos.line(new Vec3(minX, beamBottom, minZ), new Vec3(minX, beamTop, minZ), AREA_BORDER_COLOR, 2.0f).setAlwaysOnTop();
+        Gizmos.line(new Vec3(maxX, beamBottom, minZ), new Vec3(maxX, beamTop, minZ), AREA_BORDER_COLOR, 2.0f).setAlwaysOnTop();
+        Gizmos.line(new Vec3(maxX, beamBottom, maxZ), new Vec3(maxX, beamTop, maxZ), AREA_BORDER_COLOR, 2.0f).setAlwaysOnTop();
+        Gizmos.line(new Vec3(minX, beamBottom, maxZ), new Vec3(minX, beamTop, maxZ), AREA_BORDER_COLOR, 2.0f).setAlwaysOnTop();
     }
 }

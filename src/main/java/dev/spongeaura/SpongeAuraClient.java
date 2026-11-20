@@ -52,7 +52,7 @@ import java.util.Queue;
 import java.util.Set;
 
 /**
- * SpongeAura v2.2.2 for Minecraft 26.3 (Fabric, Mojang Names, Java 25).
+ * SpongeAura v2.3.0 for Minecraft 26.3 (Fabric, Mojang Names, Java 25).
  */
 public class SpongeAuraClient implements ClientModInitializer {
 
@@ -98,6 +98,7 @@ public class SpongeAuraClient implements ClientModInitializer {
     private boolean notifiedEmpty = false;
     private boolean notifiedNoFiller = false;
     private boolean notifiedNoSafeSpot = false;
+    private boolean notifiedOutsideArea = false;
     private boolean triggeredStackJoke = false;
     private boolean internalPlacement = false;
     private long tickCounter = 0;
@@ -163,6 +164,7 @@ public class SpongeAuraClient implements ClientModInitializer {
         instance.notifiedEmpty = false;
         instance.notifiedNoFiller = false;
         instance.notifiedNoSafeSpot = false;
+        instance.notifiedOutsideArea = false;
         if (value) {
             instance.resetSessionStats();
         } else {
@@ -224,6 +226,11 @@ public class SpongeAuraClient implements ClientModInitializer {
             return InteractionResult.PASS;
         }
 
+        int areaMargin = (int) Math.ceil(config.reach) + 1;
+        if (config.areaLimitEnabled && !config.isNearWorkArea(player.blockPosition(), areaMargin)) {
+            return InteractionResult.PASS;
+        }
+
         if (lastManualInterceptTick == tickCounter) {
             return InteractionResult.FAIL;
         }
@@ -260,6 +267,7 @@ public class SpongeAuraClient implements ClientModInitializer {
             notifiedEmpty = false;
             notifiedNoFiller = false;
             notifiedNoSafeSpot = false;
+            notifiedOutsideArea = false;
             resetSessionStats();
             SpongeHighlighter.clear();
             return;
@@ -309,6 +317,20 @@ public class SpongeAuraClient implements ClientModInitializer {
             netherBreakPos = null;
         }
 
+        int areaMargin = (int) Math.ceil(config.reach) + 1;
+        if (config.areaLimitEnabled && !config.isNearWorkArea(player.blockPosition(), areaMargin)) {
+            if (breakingPos != null) {
+                client.gameMode.stopDestroyBlock();
+                breakingPos = null;
+            }
+            if (!notifiedOutsideArea) {
+                player.sendOverlayMessage(Component.literal("§b[SpongeAura] §ePaused — outside work area"));
+                notifiedOutsideArea = true;
+            }
+            return;
+        }
+        notifiedOutsideArea = false;
+
         // Continue breaking an already-targeted wet sponge before doing anything else
         if (breakingPos != null) {
             if (!level.getBlockState(breakingPos).is(Blocks.WET_SPONGE)) {
@@ -318,6 +340,7 @@ public class SpongeAuraClient implements ClientModInitializer {
                 breakingPos = null;
             } else if (config.wetSpongeBreakMode == WetSpongeBreakMode.OFF
                     || !isWithinReach(player, breakingPos)
+                    || !config.isInsideWorkArea(breakingPos)
                     || (config.wetSpongeBreakMode == WetSpongeBreakMode.SAFE && isWetSpongeExposed(level, breakingPos))) {
                 client.gameMode.stopDestroyBlock();
                 breakingPos = null;
@@ -628,21 +651,29 @@ public class SpongeAuraClient implements ClientModInitializer {
 
         String modeLabel = formatModeLabel();
         String placeLabel = (config.placementMode == PlacementMode.LEGIT) ? "Legit" : "Direct";
+        String areaTag = "";
+        if (config.areaLimitEnabled) {
+            int areaMargin = (int) Math.ceil(config.reach) + 1;
+            areaTag = config.isNearWorkArea(player.blockPosition(), areaMargin)
+                    ? " §7| §eArea"
+                    : " §7| §cOutside Area";
+        }
         int totalSponges = countItem(player, Items.SPONGE);
         if (config.fillTinyWithBlocks) {
             int totalFillers = countFillerBlocks(player);
             player.sendOverlayMessage(Component.literal(
                     "§b[SpongeAura] §aON §7| " + modeLabel + " §7| " + placeLabel
-                            + " §7| Sponges: §b" + totalSponges + " §7| Fill: §e" + totalFillers
+                            + " §7| Sponges: §b" + totalSponges + " §7| Fill: §e" + totalFillers + areaTag
             ));
         } else {
             player.sendOverlayMessage(Component.literal(
-                    "§b[SpongeAura] §aON §7| " + modeLabel + " §7| " + placeLabel + " §7| Sponges: §b" + totalSponges
+                    "§b[SpongeAura] §aON §7| " + modeLabel + " §7| " + placeLabel
+                            + " §7| Sponges: §b" + totalSponges + areaTag
             ));
         }
     }
 
-    private boolean isEvaporatingDimension(ClientLevel level, BlockPos pos) {
+    static boolean isEvaporatingDimension(ClientLevel level, BlockPos pos) {
         return level.dimension().equals(Level.NETHER)
                 || Boolean.TRUE.equals(level.environmentAttributes().getValue(EnvironmentAttributes.WATER_EVAPORATES, pos));
     }
@@ -1090,6 +1121,10 @@ public class SpongeAuraClient implements ClientModInitializer {
                             pos.getX() + 1.0, pos.getY() + 1.0, pos.getZ() + 1.0
                     );
                     if (playerBox.intersects(blockBox)) {
+                        continue;
+                    }
+
+                    if (!config.isInsideWorkArea(pos)) {
                         continue;
                     }
 
@@ -1561,6 +1596,10 @@ public class SpongeAuraClient implements ClientModInitializer {
                     BlockPos pos = center.offset(dx, dy, dz);
                     double distSqr = eyePos.distanceToSqr(Vec3.atCenterOf(pos));
                     if (distSqr > maxDistSqr || distSqr >= nearestDistSqr) {
+                        continue;
+                    }
+
+                    if (!config.isInsideWorkArea(pos)) {
                         continue;
                     }
 

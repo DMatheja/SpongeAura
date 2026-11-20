@@ -3,7 +3,7 @@
   "id": "spongeaura",
   "version": "${version}",
   "name": "SpongeAura",
-  "description": "Smart source-only perimeter sponge automation with anti-refill physics, tiny-source junk-block filling, two efficiency modes, manual placement takeover, Nether auto-drying, auto-refill, safe wet-sponge breaking, and through-wall sponge highlighting.",
+  "description": "Smart source-only perimeter sponge automation with anti-refill physics, tiny-source junk-block filling, horizontal X/Z work area bounds, two efficiency modes, manual placement takeover, Nether auto-drying, auto-refill, safe wet-sponge breaking, and through-wall sponge highlighting.",
   "authors": [
     "David Matheja - David Industries™"
   ],

@@ -3,6 +3,7 @@ package dev.spongeaura;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,6 +127,48 @@ public class SpongeAuraConfig {
     public boolean autoRefill = true;
     public boolean particles = true;
 
+    public boolean areaLimitEnabled = false;
+    public int areaX1 = -128;
+    public int areaZ1 = -128;
+    public int areaX2 = 128;
+    public int areaZ2 = 128;
+
+    public int areaMinX() {
+        return Math.min(areaX1, areaX2);
+    }
+
+    public int areaMaxX() {
+        return Math.max(areaX1, areaX2);
+    }
+
+    public int areaMinZ() {
+        return Math.min(areaZ1, areaZ2);
+    }
+
+    public int areaMaxZ() {
+        return Math.max(areaZ1, areaZ2);
+    }
+
+    public boolean isInsideWorkArea(int blockX, int blockZ) {
+        if (!areaLimitEnabled) {
+            return true;
+        }
+        return blockX >= areaMinX() && blockX <= areaMaxX()
+                && blockZ >= areaMinZ() && blockZ <= areaMaxZ();
+    }
+
+    public boolean isInsideWorkArea(BlockPos pos) {
+        return isInsideWorkArea(pos.getX(), pos.getZ());
+    }
+
+    public boolean isNearWorkArea(BlockPos pos, int margin) {
+        if (!areaLimitEnabled) {
+            return true;
+        }
+        return pos.getX() >= areaMinX() - margin && pos.getX() <= areaMaxX() + margin
+                && pos.getZ() >= areaMinZ() - margin && pos.getZ() <= areaMaxZ() + margin;
+    }
+
     public static SpongeAuraConfig load() {
         if (Files.exists(CONFIG_PATH)) {
             try (Reader reader = Files.newBufferedReader(CONFIG_PATH)) {
@@ -184,6 +227,11 @@ public class SpongeAuraConfig {
         fillTinyWithBlocks = true;
         autoRefill = true;
         particles = true;
+        areaLimitEnabled = false;
+        areaX1 = -128;
+        areaZ1 = -128;
+        areaX2 = 128;
+        areaZ2 = 128;
         save();
     }
 }
